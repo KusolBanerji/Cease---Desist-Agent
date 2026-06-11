@@ -7,12 +7,12 @@ llm = ChatOpenAI(
 )
 
 
-def cease_agent(state):
+def desist_agent(state):
 
     text = state["translated_text"]
 
     prompt = f"""
-    You are a CEASE classification expert.
+    You are a DESIST classification expert.
 
     Analyze the document.
 
@@ -27,11 +27,11 @@ def cease_agent(state):
     }}
 
     Rules:
-    - confidence must be between 0 and 1
-    - evidence must be a list
-    - return raw JSON only
+    - confidence between 0 and 1
+    - evidence must be list
     - no markdown
     - no explanations
+    - raw JSON only
 
     Document:
 
@@ -49,7 +49,7 @@ def cease_agent(state):
     except Exception as e:
 
         print(
-            f"[CEASE AGENT] JSON parse error: {e}"
+            f"[DESIST AGENT] JSON parse error: {e}"
         )
 
         result = {
@@ -59,21 +59,13 @@ def cease_agent(state):
             "evidence": []
         }
 
-    state["cease_confidence"] = (
+    state["desist_confidence"] = (
         result["confidence"]
     )
 
-    state["evidence"] = (
-        result["evidence"]
-    )
-
-    state["reasoning"] = (
-        result["reasoning"]
-    )
-
     print(
-        f"[CEASE AGENT] "
-        f"{state['cease_confidence']}"
+        f"[DESIST AGENT] "
+        f"{state['desist_confidence']}"
     )
 
     return state

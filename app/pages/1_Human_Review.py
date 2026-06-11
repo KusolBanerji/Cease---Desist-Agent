@@ -50,7 +50,7 @@ else:
                 key=f"name_{review.id}"
             )
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
 
             with col1:
 
@@ -86,6 +86,21 @@ else:
 
                     st.success(
                         "Decision saved."
+                    )
+
+                    st.rerun()
+            
+            with col3:
+                
+                if st.button(
+                    "Approve DESIST",
+                    key=f"desist_{review.id}"
+                ):
+
+                    update_review_decision(
+                        review.id,
+                        reviewer,
+                        "DESIST"
                     )
 
                     st.rerun()

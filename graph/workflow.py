@@ -10,30 +10,25 @@ from db.review_queue import add_to_review_queue
 from agents.intake_agent import intake_agent
 from agents.ocr_agent import ocr_agent
 from agents.language_agent import language_agent
-from agents.classifier_agent import classifier_agent
-from agents.validator_agent import validator_agent
+
+from agents.router_agent import router_agent
+
 from agents.cease_agent import cease_agent
+from agents.desist_agent import desist_agent
+
+from agents.decision_agent import decision_agent
+
+from agents.cease_persistence_agent import (
+    cease_persistence_agent
+)
+
 from agents.archive_agent import archive_agent
 from agents.audit_agent import audit_agent
 
-def route_document(state):
-    confidence = state["confidence"]
-    category = state["category"]
-    validator_agreement = state["validator_agreement"]
 
-    if not validator_agreement:
-        return "human_review"
-
-    if confidence < CONFIDENCE_THRESHOLD:
-        return "human_review"
-
-    if category == "CEASE":
-        return "cease"
-
-    if category == "IRRELEVANT":
-        return "archive"
-
-    return "human_review"
+# --------------------------------------------------
+# HUMAN REVIEW NODE
+# --------------------------------------------------
 
 def human_review_node(state):
 
@@ -41,23 +36,65 @@ def human_review_node(state):
         document_id=state["document_id"],
         filename=state["filename"],
         category=state["category"],
-        confidence=state["confidence"],
+        confidence=max(
+            state["cease_confidence"],
+            state["desist_confidence"]
+        ),
         reasoning=state["reasoning"]
     )
 
     state["requires_human_review"] = True
+
     state["review_status"] = "PENDING"
+
     state["final_decision"] = "HUMAN_REVIEW"
 
-    print(f"[HUMAN REVIEW] {state['filename']}")
+    print(
+        f"[HUMAN REVIEW] "
+        f"{state['filename']}"
+    )
 
     return state
+
+
+# --------------------------------------------------
+# ROUTING LOGIC
+# --------------------------------------------------
+
+def route_document(state):
+
+    category = state["category"]
+
+    if category == "CEASE":
+
+        return "cease_final"
+
+    elif category == "DESIST":
+
+        return "cease_final"
+
+    elif category == "IRRELEVANT":
+
+        return "archive"
+
+    else:
+
+        return "human_review"
+
+
+# --------------------------------------------------
+# BUILD GRAPH
+# --------------------------------------------------
 
 def build_graph():
 
     workflow = StateGraph(
         WorkflowState
     )
+
+    # ---------------------------
+    # Nodes
+    # ---------------------------
 
     workflow.add_node(
         "intake",
@@ -75,18 +112,28 @@ def build_graph():
     )
 
     workflow.add_node(
-        "classifier",
-        classifier_agent
-    )
-
-    workflow.add_node(
-        "validator",
-        validator_agent
+        "router",
+        router_agent
     )
 
     workflow.add_node(
         "cease",
         cease_agent
+    )
+
+    workflow.add_node(
+        "desist",
+        desist_agent
+    )
+
+    workflow.add_node(
+        "decision",
+        decision_agent
+    )
+
+    workflow.add_node(
+        "cease_final",
+        cease_persistence_agent
     )
 
     workflow.add_node(
@@ -104,9 +151,17 @@ def build_graph():
         audit_agent
     )
 
+    # ---------------------------
+    # Entry Point
+    # ---------------------------
+
     workflow.set_entry_point(
         "intake"
     )
+
+    # ---------------------------
+    # Main Flow
+    # ---------------------------
 
     workflow.add_edge(
         "intake",
@@ -120,26 +175,44 @@ def build_graph():
 
     workflow.add_edge(
         "language",
-        "classifier"
+        "router"
     )
 
     workflow.add_edge(
-        "classifier",
-        "validator"
+        "router",
+        "cease"
     )
 
+    workflow.add_edge(
+        "cease",
+        "desist"
+    )
+
+    workflow.add_edge(
+        "desist",
+        "decision"
+    )
+
+    # ---------------------------
+    # Conditional Routing
+    # ---------------------------
+
     workflow.add_conditional_edges(
-        "validator",
+        "decision",
         route_document,
         {
-            "cease": "cease",
+            "cease_final": "cease_final",
             "archive": "archive",
             "human_review": "human_review"
         }
     )
 
+    # ---------------------------
+    # Final Steps
+    # ---------------------------
+
     workflow.add_edge(
-        "cease",
+        "cease_final",
         "audit"
     )
 
@@ -159,5 +232,6 @@ def build_graph():
     )
 
     return workflow.compile()
+
 
 graph = build_graph()

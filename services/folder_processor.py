@@ -56,7 +56,13 @@ def process_folder(folder_path="input_pdfs"):
 
             "review_status": "",
 
-            "human_decision": ""
+            "human_decision": "",
+
+            "candidate_type": "",
+
+            "cease_confidence": 0.0,
+
+            "desist_confidence": 0.0,
         }
 
         result = graph.invoke(state)
