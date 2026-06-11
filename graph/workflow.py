@@ -18,9 +18,7 @@ from agents.desist_agent import desist_agent
 
 from agents.decision_agent import decision_agent
 
-from agents.cease_persistence_agent import (
-    cease_persistence_agent
-)
+from agents.cease_persistence_agent import cease_persistence_agent
 
 from agents.archive_agent import archive_agent
 from agents.audit_agent import audit_agent
